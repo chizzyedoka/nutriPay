@@ -23,7 +23,7 @@ model Meal {
   slug              String             @unique
   name              String
   description       String
-  imageUrl          String
+  imageUrl          String             @default("")
   caloriesPreview   Int
   premiumNutrition  Json
   unlockPriceCents  Int              @default(499)
