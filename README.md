@@ -6,9 +6,10 @@ A nutrition paywall assessment built with React, Express, PostgreSQL, Prisma, an
 
 1. Install Docker Desktop and the Stripe CLI.
 2. Copy `backend/.env.example` to `backend/.env` and `frontend/.env.example` to `frontend/.env`.
-3. Create a Stripe test-mode recurring Price for `$20/month` and set its **price ID** as `STRIPE_MONTHLY_PRICE_ID`. The value must start with `price_`, not `prod_`.
-4. Fill in `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`, and a real `JWT_SECRET` in the environment files.
-5. Start the complete stack with the Docker commands below.
+3. Copy `.env.example` to `.env` and set the same `DB_NAME`, `DB_USER`, and `DB_PASSWORD` values used by both the PostgreSQL and backend containers.
+4. Create a Stripe test-mode recurring Price for `$20/month` and set its **price ID** as `STRIPE_MONTHLY_PRICE_ID`. The value must start with `price_`, not `prod_`.
+5. Fill in `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`, and a real `JWT_SECRET` in the environment files.
+6. Start the complete stack with the Docker commands below.
 
 ## Docker development
 
@@ -17,7 +18,7 @@ Docker runs PostgreSQL, the Express API, and the React frontend together. Prisma
 Start the stack using the frontend environment file as Compose's interpolation file. This passes `VITE_STRIPE_PUBLISHABLE_KEY` to the frontend image build without exposing the backend secret key:
 
 ```sh
-docker compose --env-file frontend/.env up --build
+docker compose --env-file .env --env-file frontend/.env up --build
 ```
 
 The backend container waits for PostgreSQL, runs `prisma db push`, seeds the sample meals, and starts the API. The frontend is served by Nginx.

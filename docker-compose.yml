@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: nutri_paywall
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in the root .env file}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in the root .env file}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
     ports:
       - "5432:5432"
     volumes:
@@ -24,7 +24,7 @@ services:
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/nutri_paywall?schema=public
+      DATABASE_URL: postgresql://${DB_USER:?Set DB_USER in the root .env file}:${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}@db:5432/${DB_NAME:?Set DB_NAME in the root .env file}?schema=public
       FRONTEND_ORIGIN: http://localhost:5173
       PORT: 4000
     depends_on:
