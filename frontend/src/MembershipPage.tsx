@@ -45,6 +45,7 @@ export default function MembershipPage() {
     const params = new URLSearchParams(window.location.search);
     const clientSecret = params.get('payment_intent_client_secret');
     const returnedMealId = params.get('meal_id');
+    const returnedSubscriptionId = params.get('subscription_id');
     if (!clientSecret || !import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) return;
     loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY).then((stripe) => stripe?.retrievePaymentIntent(clientSecret)).then((result) => {
       const status = result?.paymentIntent?.status;
@@ -52,6 +53,7 @@ export default function MembershipPage() {
         setNotice('Payment successful. Your premium access is being updated.');
         const paymentIntentId = result?.paymentIntent?.id;
         if (returnedMealId && paymentIntentId) confirmMealPayment(paymentIntentId, returnedMealId);
+        if (returnedSubscriptionId) confirmSubscription(returnedSubscriptionId);
       } else if (status === 'processing') setNotice('Payment is processing. Your premium access will appear after Stripe confirms it.');
       else setNotice('Payment was not completed. Please try again.');
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -63,6 +65,16 @@ export default function MembershipPage() {
       await api('/payments/confirm', { method: 'POST', body: { paymentIntentId } });
       loadFullMeal(mealId);
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Payment succeeded, but access is still being verified.'); }
+  }
+
+  async function confirmSubscription(subscriptionId: string) {
+    try {
+      await api('/billing/confirm', { method: 'POST', body: { subscriptionId } });
+      setHasAllAccess(true);
+      setNotice('Payment successful. Your membership is now active and includes every meal.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Payment succeeded, but membership is still being verified.');
+    }
   }
 
   function loadFullMeal(mealId: string) {
@@ -91,6 +103,6 @@ export default function MembershipPage() {
     <section className="content-grid"><div id="meals" className="meal-section"><div className="section-heading"><div><p className="eyebrow">The Nigerian table</p><h2>Meals worth knowing.</h2></div><span className="count">{meals.length || '—'} dishes</span></div>{loading ? <p className="muted">Loading the table...</p> : <div className="meal-list">{meals.map((meal) => <article className="meal-card" key={meal.id}><img className="meal-art" src={meal.imageUrl} alt={meal.name} loading="lazy" /><div className="meal-info"><div><p className="meal-kicker">Nigerian favourite</p><h3>{meal.name}</h3><p>{meal.description}</p></div><div className="meal-footer"><span>{hasAllAccess ? 'Included with membership' : `${meal.caloriesPreview} kcal preview`}</span><button className="unlock-button" onClick={() => openMeal(meal)}>View full plate <span>↗</span></button></div>{detailsLoading && fullMeal?.id === meal.id && <div className="details-panel"><p className="eyebrow">Payment confirmed</p><h3>Loading your full plate...</h3><p className="muted">We are waiting for Stripe's verified purchase event.</p></div>}{fullMeal?.id === meal.id && !fullMeal.isLocked && <NutritionDetails meal={fullMeal} />}</div></article>)}</div>}</div><aside className="side-panel"><div id="membership" className="membership"><p className="eyebrow">{hasAllAccess ? 'All access active' : 'All access'}</p><h2>{hasAllAccess ? <>Membership<br /><em>active.</em></> : <>Eat with<br /><em>certainty.</em></>}</h2><p>{hasAllAccess ? 'Your membership includes every recipe, portion guide, and micronutrient detail.' : 'Unlock every recipe, portion guide, and micronutrient detail for $20 a month.'}</p>{!hasAllAccess && <button className="dark-button" onClick={() => setCheckout({ type: 'subscription', label: 'NutriPay All Access' })}>Start membership <span>↗</span></button>}<div className="membership-detail"><span>{hasAllAccess ? 'All meals included' : 'Cancel anytime'}</span><span>New recipes weekly</span></div></div>{notice && <div className="notice-panel" role="status">{notice}</div>}</aside></section>
     <footer><span>nutripay / 2026</span><span>Eat well, understand more.</span></footer>
     {notice && <div className="payment-banner" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Dismiss notification">×</button></div>}
-    {checkout && <Checkout mode={checkout} onClose={() => setCheckout(null)} onDone={(message, paymentIntentId) => { const paidMealId = checkout.type === 'meal' ? checkout.mealId : null; setCheckout(null); setNotice(message); if (paidMealId && paymentIntentId) confirmMealPayment(paymentIntentId, paidMealId); }} />}
+    {checkout && <Checkout mode={checkout} onClose={() => setCheckout(null)} onDone={(message, paymentIntentId, subscriptionId) => { const paidMealId = checkout.type === 'meal' ? checkout.mealId : null; setCheckout(null); setNotice(message); if (paidMealId && paymentIntentId) confirmMealPayment(paymentIntentId, paidMealId); if (subscriptionId) confirmSubscription(subscriptionId); }} />}
   </main>;
 }

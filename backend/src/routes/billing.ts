@@ -24,6 +24,27 @@ router.post('/subscription-intent', requireAuth, async (request: AuthenticatedRe
   } catch (error) { return next(error); }
 });
 
+router.post('/confirm', requireAuth, async (request: AuthenticatedRequest, response, next) => {
+  try {
+    const subscriptionId = request.body?.subscriptionId;
+    if (typeof subscriptionId !== 'string' || !subscriptionId.startsWith('sub_')) return response.status(400).json({ error: 'Invalid subscription ID' });
+    const [user, subscription] = await Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { id: request.userId } }),
+      stripe.subscriptions.retrieve(subscriptionId)
+    ]);
+    const customerMatches = typeof subscription.customer === 'string' && subscription.customer === user.stripeCustomerId;
+    const metadataMatches = subscription.metadata.userId === user.id;
+    if (!customerMatches && !metadataMatches) return response.status(403).json({ error: 'Subscription does not belong to this account' });
+    if (!['active', 'trialing'].includes(subscription.status)) return response.status(409).json({ error: `Subscription is ${subscription.status}`, status: subscription.status });
+    const saved = await prisma.subscription.upsert({
+      where: { stripeSubscriptionId: subscription.id },
+      update: { status: subscription.status, cancelAtPeriodEnd: subscription.cancel_at_period_end },
+      create: { userId: user.id, stripeSubscriptionId: subscription.id, stripePriceId: subscription.items.data[0]?.price.id ?? env.STRIPE_MONTHLY_PRICE_ID, status: subscription.status, cancelAtPeriodEnd: subscription.cancel_at_period_end }
+    });
+    return response.json({ confirmed: true, subscription: saved });
+  } catch (error) { return next(error); }
+});
+
 router.get('/status', requireAuth, async (request: AuthenticatedRequest, response, next) => {
   try { return response.json({ subscription: await prisma.subscription.findFirst({ where: { userId: request.userId }, orderBy: { createdAt: 'desc' } }) }); }
   catch (error) { return next(error); }
