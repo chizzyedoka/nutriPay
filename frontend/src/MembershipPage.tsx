@@ -30,13 +30,13 @@ export default function MembershipPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const clientSecret = params.get('payment_intent_client_secret');
-    const paymentIntentId = params.get('payment_intent');
     const returnedMealId = params.get('meal_id');
     if (!clientSecret || !import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) return;
     loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY).then((stripe) => stripe?.retrievePaymentIntent(clientSecret)).then((result) => {
       const status = result?.paymentIntent?.status;
       if (status === 'succeeded') {
         setNotice('Payment successful. Your premium access is being updated.');
+        const paymentIntentId = result?.paymentIntent?.id;
         if (returnedMealId && paymentIntentId) confirmMealPayment(paymentIntentId, returnedMealId);
       } else if (status === 'processing') setNotice('Payment is processing. Your premium access will appear after Stripe confirms it.');
       else setNotice('Payment was not completed. Please try again.');
