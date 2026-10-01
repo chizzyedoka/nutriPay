@@ -6,12 +6,13 @@ import { api } from './lib/api';
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null;
 type CheckoutMode = { type: 'meal'; mealId: string; label: string; amountCents: number } | { type: 'subscription'; label: string };
 
-function PaymentForm({ mode, onDone }: { mode: CheckoutMode; onDone: (message: string) => void }) {
+function PaymentForm({ mode, onDone }: { mode: CheckoutMode; onDone: (message: string, paymentIntentId?: string) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState('');
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -22,12 +23,15 @@ function PaymentForm({ mode, onDone }: { mode: CheckoutMode; onDone: (message: s
     const returnUrl = `${window.location.origin}${window.location.pathname}?payment_type=${mode.type}${mealQuery}`;
     const result = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl }, redirect: 'if_required' });
     if (result.error) setError(result.error.message ?? 'Payment could not be completed');
-    else if (result.paymentIntent?.status === 'succeeded') setSuccess(true);
+    else if (result.paymentIntent?.status === 'succeeded') {
+      setPaymentIntentId(result.paymentIntent.id);
+      setSuccess(true);
+    }
     else setError('Payment is processing. Keep this window open while Stripe confirms it.');
     setSubmitting(false);
   }
 
-  if (success) return <div className="payment-success" role="status"><div className="success-mark">✓</div><h3>Payment successful</h3><p>Your {mode.type === 'subscription' ? '$20/month membership' : 'meal unlock'} is confirmed. Stripe will email your receipt if receipt emails are enabled for this account.</p><button className="dark-button" onClick={() => onDone('Payment successful. Your premium access is being updated.')}>Continue <span>↗</span></button></div>;
+  if (success) return <div className="payment-success" role="status"><div className="success-mark">✓</div><h3>Payment successful</h3><p>Your {mode.type === 'subscription' ? '$20/month membership' : 'meal unlock'} is confirmed. Stripe will email your receipt if receipt emails are enabled for this account.</p><button className="dark-button" onClick={() => onDone('Payment successful. Your premium access is being updated.', paymentIntentId)}>Continue <span>↗</span></button></div>;
 
   return <form className="checkout-form" onSubmit={submit}>
     <PaymentElement />
@@ -36,7 +40,7 @@ function PaymentForm({ mode, onDone }: { mode: CheckoutMode; onDone: (message: s
   </form>;
 }
 
-export default function Checkout({ mode, onClose, onDone }: { mode: CheckoutMode; onClose: () => void; onDone: (message: string) => void }) {
+export default function Checkout({ mode, onClose, onDone }: { mode: CheckoutMode; onClose: () => void; onDone: (message: string, paymentIntentId?: string) => void }) {
   const [clientSecret, setClientSecret] = useState('');
   const [error, setError] = useState('');
 

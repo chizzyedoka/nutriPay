@@ -27,4 +27,23 @@ router.post('/meal-intents', requireAuth, async (request: AuthenticatedRequest, 
   } catch (error) { return next(error); }
 });
 
+router.post('/confirm', requireAuth, async (request: AuthenticatedRequest, response, next) => {
+  try {
+    const paymentIntentId = z.object({ paymentIntentId: z.string().startsWith('pi_') }).parse(request.body).paymentIntentId;
+    const [user, intent] = await Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { id: request.userId } }),
+      stripe.paymentIntents.retrieve(paymentIntentId)
+    ]);
+    const customerMatches = typeof intent.customer === 'string' && intent.customer === user.stripeCustomerId;
+    const metadataMatches = intent.metadata.userId === user.id;
+    if (!customerMatches && !metadataMatches) return response.status(403).json({ error: 'Payment does not belong to this account' });
+    if (intent.status !== 'succeeded') return response.status(409).json({ error: `Payment is ${intent.status}`, status: intent.status });
+    const mealId = intent.metadata.mealId;
+    const meal = mealId ? await prisma.meal.findUnique({ where: { id: mealId } }) : null;
+    if (!meal) return response.status(404).json({ error: 'Paid meal was not found' });
+    await prisma.premiumPurchase.upsert({ where: { paymentIntentId: intent.id }, update: {}, create: { userId: user.id, mealId: meal.id, paymentIntentId: intent.id, amountCents: intent.amount } });
+    return response.json({ confirmed: true, mealId: meal.id });
+  } catch (error) { return next(error); }
+});
+
 export default router;

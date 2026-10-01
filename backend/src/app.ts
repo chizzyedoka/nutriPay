@@ -11,6 +11,7 @@ import paymentRoutes from './routes/payments.js';
 import webhookRoutes from './routes/webhooks.js';
 
 export const app = express();
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_ORIGIN, credentials: true }));
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), webhookRoutes);
