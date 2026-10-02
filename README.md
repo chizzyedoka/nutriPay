@@ -2,6 +2,8 @@
 
 A nutrition paywall assessment built with React, Express, PostgreSQL, Prisma, and Stripe.
 
+For the complete evaluator walkthrough, see [TESTING.md](TESTING.md). For a detailed explanation of the Stripe integration, see [STRIPE_FLOW.md](STRIPE_FLOW.md).
+
 ## Setup
 
 1. Install Docker Desktop and the Stripe CLI.
