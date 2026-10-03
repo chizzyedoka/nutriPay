@@ -56,5 +56,9 @@ export default function Checkout({ mode, onClose, onDone }: { mode: CheckoutMode
     }).catch((requestError: Error) => setError(requestError.message));
   }, [mode]);
 
+  if (error) {
+    return <div className="checkout-backdrop" role="dialog" aria-modal="true" aria-label={`${mode.label} checkout`}><section className="checkout-panel"><button className="close-button" onClick={onClose} aria-label="Close checkout">×</button><p className="eyebrow">Secure checkout</p><h2>{mode.label}</h2><p className="checkout-copy">Your card details go directly to Stripe. NutriPay never stores payment information.</p><p className="notice">{error}. Sign in first, then try again.</p></section></div>;
+  }
+
   return <div className="checkout-backdrop" role="dialog" aria-modal="true" aria-label={`${mode.label} checkout`}><section className="checkout-panel"><button className="close-button" onClick={onClose} aria-label="Close checkout">×</button><p className="eyebrow">Secure checkout</p><h2>{mode.label}</h2><p className="checkout-copy">Your card details go directly to Stripe. NutriPay never stores payment information.</p>{error ? <p className="notice">{error}. Sign in first, then try again.</p> : clientSecret && stripePromise ? <Elements stripe={stripePromise} options={{ clientSecret }}><PaymentForm mode={mode} subscriptionId={subscriptionId} onDone={onDone} /></Elements> : <p className="muted">Preparing secure payment...</p>}</section></div>;
 }
